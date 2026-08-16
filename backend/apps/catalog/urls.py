@@ -1,2 +1,4 @@
-# Rotas do catálogo (produtos, categorias, marcas) — v1.
-# Populado na fase de catálogo.
+"""Rotas do catálogo (v1)."""
+from django.urls import path
+
+urlpatterns = []

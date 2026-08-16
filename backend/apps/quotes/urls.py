@@ -1,2 +1,4 @@
-# Rotas das cotações — v1.
-# Populado na fase de cotações.
+"""Rotas das cotações (v1)."""
+from django.urls import path
+
+urlpatterns = []
