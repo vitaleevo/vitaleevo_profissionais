@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export type OwnerKpiStats = {
   totalRevenueCents?: number;
   monthlyRevenueCents?: number;
+  estimatedRevenueCents?: number;
   activeContracts?: number;
   allocatedProfessionals?: number;
   academyStudents?: number;
@@ -33,7 +34,7 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
   const cards = [
     {
       title: "Volume em Contratos & Faturação",
-      value: "48.500.000 Kz",
+      value: stats?.totalRevenueCents ? `${(stats.totalRevenueCents / 100000000).toFixed(1)}M Kz` : "48.500.000 Kz",
       subtext: "+18.4% vs mês anterior",
       trend: "up",
       icon: Wallet,
@@ -43,8 +44,8 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
     },
     {
       title: "Equipas Alocadas em Outsourcing",
-      value: "14 Equipas",
-      subtext: "72 profissionais ativos em clientes",
+      value: stats?.activeContracts ? `${stats.activeContracts} Equipas` : "14 Equipas",
+      subtext: `${stats?.allocatedProfessionals ?? 72} profissionais ativos em clientes`,
       trend: "up",
       icon: Briefcase,
       gradient: "from-purple-500/15 via-purple-500/5 to-transparent",
@@ -53,7 +54,7 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
     },
     {
       title: "Academia Vitaleevo (Talentos)",
-      value: "28 Formandos",
+      value: stats?.academyStudents ? `${stats.academyStudents} Formandos` : "28 Formandos",
       subtext: "12 aptos para colocação imediata",
       trend: "neutral",
       icon: GraduationCap,
@@ -63,8 +64,8 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
     },
     {
       title: "Propostas & Diagnósticos Pendentes",
-      value: "6 Propostas",
-      subtext: "Estimadas em 16.200.000 Kz",
+      value: stats?.pendingQuotes ? `${stats.pendingQuotes} Propostas` : "6 Propostas",
+      subtext: stats?.estimatedRevenueCents ? `Estimadas em ${(stats.estimatedRevenueCents / 100000000).toFixed(1)}M Kz` : "Estimadas em 16.200.000 Kz",
       trend: "attention",
       icon: Sparkles,
       gradient: "from-indigo-500/15 via-indigo-500/5 to-transparent",
