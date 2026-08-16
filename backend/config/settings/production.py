@@ -7,7 +7,7 @@ assert SECRET_KEY != "dev-only-secret-key-change-me", "SECRET_KEY é obrigatóri
 assert DATABASES["default"]["ENGINE"] != "django.db.backends.sqlite3", "Produção exige PostgreSQL (DATABASE_URL)"  # noqa: S101
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=False)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
