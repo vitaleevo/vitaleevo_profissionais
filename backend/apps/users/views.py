@@ -1,8 +1,16 @@
 """Endpoints de autenticação e perfil."""
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import EmailTokenObtainPairSerializer, RegisterSerializer, UserSerializer
+
+
+class LoginView(TokenObtainPairView):
+    """POST /auth/login/ — autenticação JWT com e-mail e password."""
+
+    serializer_class = EmailTokenObtainPairSerializer
+    throttle_scope = "auth"
 
 
 class RegisterView(generics.CreateAPIView):
