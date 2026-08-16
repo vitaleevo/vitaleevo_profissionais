@@ -73,14 +73,12 @@ export async function PublicHeader({ verticalKey }: PublicHeaderProps = {}) {
   );
 }
 
-async function getOptionalCurrentUser() {
-  return getCurrentUser().catch((error: unknown) => {
-    if (isAccessError(error)) {
-      return null;
-    }
-
-    throw error;
-  });
+async function getOptionalCurrentUser(): Promise<User | null> {
+  try {
+    return await getCurrentUser();
+  } catch {
+    return null;
+  }
 }
 
 function sessionFor(user: User) {

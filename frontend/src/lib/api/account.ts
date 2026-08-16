@@ -4,7 +4,7 @@ import { apiGet } from "./http";
 import type { AccountSummary, OperationsDashboard, ServiceRequest, User } from "./types";
 
 export async function getCurrentUser() {
-  return apiGet<User>("/api/v1/me", { forwardCookies: true });
+  return apiGet<User>("/api/v1/auth/me/", { forwardCookies: true });
 }
 
 export async function getAccountSummary() {
