@@ -2,7 +2,7 @@
 
 module ConexaoDomains
   DEFAULT_ROOT_DOMAIN = "profiangola.ao"
-  INTERNAL_HOSTS = %w[localhost 127.0.0.1 rails web .railway.app].freeze
+  INTERNAL_HOSTS = %w[localhost 127.0.0.1 rails web .railway.app .vercel.app].freeze
   SAME_SITE_VALUES = %i[lax strict none].freeze
 
   module_function
