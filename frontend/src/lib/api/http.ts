@@ -34,7 +34,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "http://localhost:3000";
+const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "https://backend-production-ff93.up.railway.app";
 
 export async function apiGet<T>(path: string, options: ApiRequestOptions = {}) {
   return apiRequest<T>(path, { ...options, method: "GET" });

@@ -13,7 +13,7 @@ type ApiEnvelope<T> = {
   };
 };
 
-const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "http://localhost:3000";
+const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "https://backend-production-ff93.up.railway.app";
 const rateLimitWindowMs = 60_000;
 const rateLimitMax = Number(process.env.RATE_LIMIT_AUTH_PER_MINUTE ?? 10);
 

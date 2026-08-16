@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { clientIpFromRequest, consumeRateLimit } from "@/lib/server/rate-limit";
 
-const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "http://localhost:3000";
+const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "https://backend-production-ff93.up.railway.app";
 const rateLimitWindowMs = 60_000;
 const rateLimitMax = Number(process.env.PUBLIC_PROFESSIONAL_SEARCH_RATE_LIMIT_PER_MINUTE ?? 60);
 

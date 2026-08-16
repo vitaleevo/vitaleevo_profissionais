@@ -8,7 +8,7 @@ type ApiEnvelope<T> = {
   data?: T;
 };
 
-const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "http://localhost:3000";
+const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "https://backend-production-ff93.up.railway.app";
 
 export async function POST(request: Request) {
   const incomingCookie = request.headers.get("cookie") ?? "";
