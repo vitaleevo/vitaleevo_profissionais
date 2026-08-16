@@ -37,32 +37,47 @@ export async function POST(request: Request) {
     return redirectToLogin(request, "missing_credentials");
   }
 
-  const incomingCookie = request.headers.get("cookie") ?? "";
-  const csrfResponse = await fetch(`${apiBaseUrl}/api/v1/session/csrf`, {
-    headers: buildHeaders(incomingCookie),
-    cache: "no-store",
-  });
-  const csrfPayload = (await csrfResponse.json()) as ApiEnvelope<{ csrf_token: string }>;
-  const csrfCookie = setCookieHeaders(csrfResponse.headers).map((cookie) => cookie.split(";", 1)[0]).join("; ");
-
-  if (!csrfResponse.ok || !csrfPayload.data?.csrf_token) {
-    return redirectToLogin(request, "session_failed");
-  }
-
-  const loginResponse = await fetch(`${apiBaseUrl}/api/v1/session`, {
+  // Try Django JWT Auth directly
+  const loginResponse = await fetch(`${apiBaseUrl}/api/v1/auth/login/`, {
     method: "POST",
-    headers: buildHeaders(mergeCookieHeaders(incomingCookie, csrfCookie), csrfPayload.data.csrf_token),
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
     body: JSON.stringify({ email, password }),
     cache: "no-store",
   });
-  const loginPayload = (await loginResponse.json().catch(() => ({}))) as ApiEnvelope<User>;
 
-  if (!loginResponse.ok || !loginPayload.data) {
+  const loginPayload = (await loginResponse.json().catch(() => ({}))) as any;
+
+  if (!loginResponse.ok || (!loginPayload.user && !loginPayload.data)) {
     return redirectToLogin(request, loginResponse.status === 429 ? "rate_limited" : "invalid_credentials");
   }
 
-  const response = NextResponse.redirect(appUrl(request, nextPathFor(loginPayload.data)), 303);
-  copySetCookies(csrfResponse.headers, response);
+  const authenticatedUser = (loginPayload.user || loginPayload.data) as User;
+  const targetPath = authenticatedUser.role === "admin" ? "/admin" : nextPathFor(authenticatedUser);
+  const response = NextResponse.redirect(appUrl(request, targetPath), 303);
+
+  // Set JWT tokens in HttpOnly cookies
+  if (loginPayload.access) {
+    response.cookies.set("jwt_access", loginPayload.access, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 8, // 8 hours
+    });
+  }
+  if (loginPayload.refresh) {
+    response.cookies.set("jwt_refresh", loginPayload.refresh, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+  }
+
   copySetCookies(loginResponse.headers, response);
   return response;
 }
