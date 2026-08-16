@@ -1,0 +1,2112 @@
+---
+openapi: 3.1.0
+info:
+  title: Conexao API
+  version: 1.0.0
+  summary: API v1 para o frontend Next.js do ecossistema Conexao.
+  description: 'Contrato inicial para separar o Rails como backend/API e o Next.js
+    como frontend. Regras de autorizacao continuam no Rails via Pundit.
+
+    '
+servers:
+- url: http://localhost:3000
+  description: Rails local
+tags:
+- name: Marketplace
+  description: Dados publicos para telas abertas.
+- name: Account
+  description: Usuario autenticado, conta e perfil.
+- name: Professionals
+  description: Profissionais, filtros e detalhe.
+- name: ServiceRequests
+  description: Pedidos de servico e workflow operacional.
+- name: Operations
+  description: Dashboard operacional.
+- name: ProfessionalPortal
+  description: Area autenticada do profissional.
+- name: Payments
+  description: Pagamentos visiveis pelo usuario autenticado.
+- name: Observability
+  description: Health checks publicos para deploy e monitoramento.
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: _conectangola_session
+      description: Sessao Rails enviada como cookie HttpOnly.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Token CSRF obrigatorio para mutacoes quando a chamada usa cookie
+        de sessao.
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+              examples:
+              - unauthorized
+              - forbidden
+              - not_found
+              - validation_failed
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+    ServiceCategory:
+      type: object
+      required:
+      - id
+      - name
+      - slug
+      - base_price_cents
+      - average_duration_minutes
+      - urgent_available
+      - icon_token
+      - image_name
+      - image_path
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        base_price_cents:
+          type: integer
+          minimum: 0
+        average_duration_minutes:
+          type: integer
+          minimum: 0
+        urgent_available:
+          type: boolean
+        icon_token:
+          type: string
+        image_name:
+          type: string
+        image_path:
+          type: string
+        professionals_count:
+          type: integer
+          minimum: 0
+    Client:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        company_name:
+          type:
+          - string
+          - 'null'
+        province:
+          type:
+          - string
+          - 'null'
+        municipality:
+          type:
+          - string
+          - 'null'
+        neighborhood:
+          type:
+          - string
+          - 'null'
+        contact:
+          type: object
+          properties:
+            phone:
+              type: string
+            email:
+              type:
+              - string
+              - 'null'
+        address:
+          type:
+          - string
+          - 'null'
+        coordinates:
+          "$ref": "#/components/schemas/Coordinates"
+    Coordinates:
+      type: object
+      properties:
+        latitude:
+          type:
+          - number
+          - string
+          - 'null'
+        longitude:
+          type:
+          - number
+          - string
+          - 'null'
+    AuditActivity:
+      type: object
+      required:
+      - id
+      - action
+      - created_at
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+          enum:
+          - professional_document.reviewed
+          - professional.operational_profile_updated
+          - service_request.assigned
+          - service_request.status_updated
+        actor:
+          type:
+          - object
+          - 'null'
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            role:
+              type: string
+        auditable_type:
+          type:
+          - string
+          - 'null'
+        auditable_id:
+          type:
+          - integer
+          - 'null'
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+            - type: string
+            - type: integer
+            - type: number
+            - type: boolean
+            - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+    OperationsStats:
+      type: object
+      required:
+      - revenue_cents
+      - commission_cents
+      - requests_count
+      - open_requests_count
+      - pending_requests_count
+      - assigned_requests_count
+      - in_work_requests_count
+      - disputed_requests_count
+      - professionals_online_count
+      - professionals_verified_count
+      - professionals_available_count
+      - professionals_pending_docs_count
+      - professionals_rejected_docs_count
+      - overdue_requests_count
+      - sla_risk_requests_count
+      - average_response_minutes
+      - completion_rate_percent
+      - dispute_rate_percent
+      - average_quality_rating
+      - review_coverage_percent
+      properties:
+        revenue_cents:
+          type: integer
+        commission_cents:
+          type: integer
+        requests_count:
+          type: integer
+        open_requests_count:
+          type: integer
+        pending_requests_count:
+          type: integer
+        assigned_requests_count:
+          type: integer
+        in_work_requests_count:
+          type: integer
+        disputed_requests_count:
+          type: integer
+        professionals_online_count:
+          type: integer
+        professionals_verified_count:
+          type: integer
+        professionals_available_count:
+          type: integer
+        professionals_pending_docs_count:
+          type: integer
+        professionals_rejected_docs_count:
+          type: integer
+        overdue_requests_count:
+          type: integer
+        sla_risk_requests_count:
+          type: integer
+        average_response_minutes:
+          type:
+          - integer
+          - 'null'
+        completion_rate_percent:
+          type:
+          - integer
+          - 'null'
+        dispute_rate_percent:
+          type:
+          - integer
+          - 'null'
+        average_quality_rating:
+          type:
+          - number
+          - 'null'
+        review_coverage_percent:
+          type:
+          - integer
+          - 'null'
+    OperationsServiceQuality:
+      type: object
+      required:
+      - status
+      - generated_at
+      - overdue_requests_count
+      - sla_risk_requests_count
+      - average_response_minutes
+      - completion_rate_percent
+      - dispute_rate_percent
+      - average_quality_rating
+      - review_coverage_percent
+      properties:
+        status:
+          type: string
+          enum:
+          - healthy
+          - attention
+          - critical
+        generated_at:
+          type: string
+          format: date-time
+        overdue_requests_count:
+          type: integer
+        sla_risk_requests_count:
+          type: integer
+        average_response_minutes:
+          type:
+          - integer
+          - 'null'
+        completion_rate_percent:
+          type:
+          - integer
+          - 'null'
+        dispute_rate_percent:
+          type:
+          - integer
+          - 'null'
+        average_quality_rating:
+          type:
+          - number
+          - 'null'
+        review_coverage_percent:
+          type:
+          - integer
+          - 'null'
+    OperationsRiskAlert:
+      type: object
+      required:
+      - id
+      - code
+      - title
+      - status
+      - urgency
+      - service_category_name
+      - age_minutes
+      - risk_level
+      - reason
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum:
+          - pending
+          - assigned
+          - accepted
+          - in_progress
+          - disputed
+        urgency:
+          type: string
+          enum:
+          - normal
+          - urgent
+          - priority
+        province:
+          type:
+          - string
+          - 'null'
+        service_category_name:
+          type: string
+        scheduled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        age_minutes:
+          type: integer
+        risk_level:
+          type: string
+          enum:
+          - medium
+          - high
+          - critical
+        reason:
+          type: string
+    Professional:
+      type: object
+      required:
+      - id
+      - name
+      - specialty
+      - location
+      - status
+      - documents_status
+      - experience_years
+      - hourly_rate_cents
+      - rating
+      - completed_jobs
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        specialty:
+          type: string
+        bio:
+          type:
+          - string
+          - 'null'
+        location:
+          type: string
+        province:
+          type:
+          - string
+          - 'null'
+        municipality:
+          type:
+          - string
+          - 'null'
+        neighborhood:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - online
+          - offline
+          - occupied
+          - suspended
+        documents_status:
+          type: string
+          enum:
+          - pending
+          - verified
+          - rejected
+        experience_years:
+          type: integer
+          minimum: 0
+        hourly_rate_cents:
+          type: integer
+          minimum: 0
+        rating:
+          type: number
+        quality_rating:
+          type: number
+        punctuality_rating:
+          type: number
+        communication_rating:
+          type: number
+        completed_jobs:
+          type: integer
+          minimum: 0
+        distance_km:
+          type: number
+        response_minutes:
+          type: integer
+          minimum: 0
+        service_categories:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ServiceCategory"
+        contact:
+          type: object
+          properties:
+            phone:
+              type: string
+            email:
+              type:
+              - string
+              - 'null'
+        coordinates:
+          "$ref": "#/components/schemas/Coordinates"
+        documents:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ProfessionalDocument"
+        operator_notes:
+          type:
+          - string
+          - 'null'
+          description: Nota interna visivel apenas para administradores e operadores.
+        operational_activity:
+          type: array
+          description: Historico operacional visivel apenas para administradores e operadores.
+          items:
+            "$ref": "#/components/schemas/AuditActivity"
+    ProfessionalDocument:
+      type: object
+      required:
+      - id
+      - professional_id
+      - kind
+      - status
+      - original_filename
+      - content_type
+      - byte_size
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: integer
+        professional_id:
+          type: integer
+        kind:
+          type: string
+          enum:
+          - identity
+          - certificate
+          - license
+        status:
+          type: string
+          enum:
+          - pending
+          - approved
+          - rejected
+        original_filename:
+          type: string
+        content_type:
+          type: string
+        byte_size:
+          type: integer
+          minimum: 1
+        review_notes:
+          type:
+          - string
+          - 'null'
+        reviewed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        reviewed_by:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ProfessionalProfileInput:
+      type: object
+      required:
+      - professional
+      properties:
+        professional:
+          type: object
+          required:
+          - name
+          - phone
+          - specialty
+          - location
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+            email:
+              type: string
+              format: email
+            specialty:
+              type: string
+            bio:
+              type: string
+            location:
+              type: string
+            province:
+              type: string
+            municipality:
+              type: string
+            neighborhood:
+              type: string
+            hourly_rate_cents:
+              type: integer
+              minimum: 0
+            experience_years:
+              type: integer
+              minimum: 0
+            response_minutes:
+              type: integer
+              minimum: 0
+            status:
+              type: string
+              enum:
+              - online
+              - offline
+              - occupied
+            service_category_ids:
+              type: array
+              items:
+                type: integer
+    Payment:
+      type: object
+      required:
+      - id
+      - service_request_id
+      - amount_cents
+      - method
+      - status
+      - created_at
+      properties:
+        id:
+          type: integer
+        service_request_id:
+          type: integer
+        amount_cents:
+          type: integer
+        commission_cents:
+          type: integer
+        professional_payout_cents:
+          type: integer
+        method:
+          type: string
+          enum:
+          - multicaixa_express
+          - unitel_money
+          - reference
+          - stripe
+          - paypal
+          - cash
+        status:
+          type: string
+          enum:
+          - pending
+          - paid
+          - refunded
+          - failed
+        paid_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    ServiceRequest:
+      type: object
+      required:
+      - id
+      - code
+      - title
+      - status
+      - urgency
+      - location
+      - budget_cents
+      - created_at
+      - service_category
+      - client
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        title:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - pending
+          - assigned
+          - accepted
+          - in_progress
+          - completed
+          - cancelled
+          - disputed
+        urgency:
+          type: string
+          enum:
+          - normal
+          - urgent
+          - priority
+        location:
+          type: string
+        province:
+          type:
+          - string
+          - 'null'
+        municipality:
+          type:
+          - string
+          - 'null'
+        neighborhood:
+          type:
+          - string
+          - 'null'
+        budget_cents:
+          type: integer
+          minimum: 0
+        scheduled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        accepted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        completed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        service_category:
+          "$ref": "#/components/schemas/ServiceCategory"
+        client:
+          "$ref": "#/components/schemas/Client"
+        professional:
+          anyOf:
+          - "$ref": "#/components/schemas/Professional"
+          - type: 'null'
+        payments:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Payment"
+        attachments:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ServiceRequestAttachment"
+        review:
+          anyOf:
+          - "$ref": "#/components/schemas/Review"
+          - type: 'null'
+    ServiceRequestAttachment:
+      type: object
+      required:
+      - id
+      - service_request_id
+      - original_filename
+      - content_type
+      - byte_size
+      - created_at
+      properties:
+        id:
+          type: integer
+        service_request_id:
+          type: integer
+        original_filename:
+          type: string
+        content_type:
+          type: string
+        byte_size:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+    Match:
+      type: object
+      required:
+      - professional
+      - score
+      - distance_km
+      - rating_score
+      - proximity_score
+      - availability_score
+      - experience_score
+      properties:
+        professional:
+          "$ref": "#/components/schemas/Professional"
+        score:
+          type: number
+        distance_km:
+          type: number
+        rating_score:
+          type: number
+        proximity_score:
+          type: number
+        availability_score:
+          type: number
+        experience_score:
+          type: number
+    Review:
+      type: object
+      required:
+      - id
+      - quality
+      - punctuality
+      - communication
+      - created_at
+      - client
+      - professional
+      - service_request
+      properties:
+        id:
+          type: integer
+        quality:
+          type: integer
+          minimum: 1
+          maximum: 5
+        punctuality:
+          type: integer
+          minimum: 1
+          maximum: 5
+        communication:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        client:
+          "$ref": "#/components/schemas/Client"
+        professional:
+          "$ref": "#/components/schemas/Professional"
+        service_request:
+          type: object
+          required:
+          - id
+          - title
+          properties:
+            id:
+              type: integer
+            code:
+              type: string
+            title:
+              type: string
+    CreateReviewInput:
+      type: object
+      required:
+      - review
+      properties:
+        review:
+          type: object
+          required:
+          - quality
+          - punctuality
+          - communication
+          properties:
+            quality:
+              type: integer
+              minimum: 1
+              maximum: 5
+            punctuality:
+              type: integer
+              minimum: 1
+              maximum: 5
+            communication:
+              type: integer
+              minimum: 1
+              maximum: 5
+            comment:
+              type:
+              - string
+              - 'null'
+    User:
+      type: object
+      required:
+      - id
+      - name
+      - email
+      - role
+      - active
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - admin
+          - operator
+          - professional
+          - client
+        active:
+          type: boolean
+        profile:
+          anyOf:
+          - "$ref": "#/components/schemas/Client"
+          - "$ref": "#/components/schemas/Professional"
+          - type: 'null'
+    LoginInput:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    CreateServiceRequestInput:
+      type: object
+      required:
+      - client
+      - service_request
+      properties:
+        client:
+          type: object
+          required:
+          - name
+          - phone
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+            email:
+              type: string
+              format: email
+            company_name:
+              type: string
+            address:
+              type: string
+            province:
+              type: string
+            municipality:
+              type: string
+            neighborhood:
+              type: string
+            latitude:
+              type: number
+            longitude:
+              type: number
+        service_request:
+          type: object
+          required:
+          - service_category_id
+          - title
+          - description
+          - location
+          properties:
+            service_category_id:
+              type: integer
+            title:
+              type: string
+            description:
+              type: string
+            location:
+              type: string
+            province:
+              type: string
+            municipality:
+              type: string
+            neighborhood:
+              type: string
+            latitude:
+              type: number
+            longitude:
+              type: number
+            urgency:
+              type: string
+              enum:
+              - normal
+              - urgent
+              - priority
+            scheduled_at:
+              type: string
+              format: date-time
+            budget_cents:
+              type: integer
+              minimum: 0
+              description: Campo interno aceito apenas para usuarios operacionais; clientes e profissionais devem enviar budget_aoa.
+            budget_aoa:
+              type: integer
+              minimum: 0
+            operator_notes:
+              type: string
+              description: Campo interno aceito apenas para usuarios operacionais; clientes e profissionais nao conseguem gravar este valor.
+    AssignServiceRequestInput:
+      type: object
+      required:
+      - professional_id
+      properties:
+        professional_id:
+          type: integer
+    UpdateServiceRequestStatusInput:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - accepted
+          - in_progress
+          - completed
+          - cancelled
+          - disputed
+  responses:
+    Unauthorized:
+      description: Usuario nao autenticado.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Usuario autenticado sem permissao.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Recurso nao encontrado.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/ErrorResponse"
+    ValidationFailed:
+      description: Erro de validacao.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/ErrorResponse"
+paths:
+  "/api/v1/health":
+    get:
+      tags:
+      - Observability
+      summary: Retorna o estado operacional minimo da API.
+      responses:
+        '200':
+          description: API operacional.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required:
+                    - status
+                    - checks
+                    - checked_at
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                        - ok
+                      checks:
+                        type: object
+                        required:
+                        - database
+                        properties:
+                          database:
+                            type: string
+                            enum:
+                            - ok
+                      checked_at:
+                        type: string
+                        format: date-time
+        '503':
+          description: API degradada.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - status
+                      - checks
+                      - checked_at
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                          - degraded
+                        checks:
+                          type: object
+                          properties:
+                            database:
+                              type: string
+                              enum:
+                              - error
+                        checked_at:
+                          type: string
+                          format: date-time
+                - "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/session/csrf":
+    get:
+      tags:
+      - Account
+      summary: Gera token CSRF para mutacoes autenticadas por cookie.
+      responses:
+        '200':
+          description: Token CSRF.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required:
+                    - csrf_token
+                    properties:
+                      csrf_token:
+                        type: string
+  "/api/v1/session":
+    post:
+      tags:
+      - Account
+      summary: Cria sessao Rails via Devise.
+      security:
+      - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/LoginInput"
+      responses:
+        '200':
+          description: Login efetuado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/User"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+    delete:
+      tags:
+      - Account
+      summary: Encerra sessao atual.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      responses:
+        '200':
+          description: Logout efetuado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      signed_out:
+                        type: boolean
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+  "/api/v1/marketplace/home":
+    get:
+      tags:
+      - Marketplace
+      summary: Dados publicos para home do marketplace.
+      responses:
+        '200':
+          description: Home publica.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required:
+                    - categories
+                    - popular_services
+                    - top_professionals
+                    - stats
+                    properties:
+                      categories:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/ServiceCategory"
+                      popular_services:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/ServiceCategory"
+                      top_professionals:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/Professional"
+                      stats:
+                        type: object
+  "/api/v1/marketplace/trust":
+    get:
+      tags:
+      - Marketplace
+      summary: Dados publicos de confianca e avaliacoes.
+      responses:
+        '200':
+          description: Confianca publica.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      reviews:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/Review"
+                      professionals:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/Professional"
+                      stats:
+                        type: object
+  "/api/v1/service_categories":
+    get:
+      tags:
+      - Marketplace
+      summary: Lista categorias publicas.
+      responses:
+        '200':
+          description: Categorias.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/ServiceCategory"
+  "/api/v1/service_categories/{slug}":
+    get:
+      tags:
+      - Marketplace
+      summary: Detalhe publico de uma categoria por slug.
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Categoria e profissionais ativos.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      category:
+                        "$ref": "#/components/schemas/ServiceCategory"
+                      professionals:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/Professional"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/v1/me":
+    get:
+      tags:
+      - Account
+      summary: Usuario autenticado atual.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Usuario atual.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/User"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+  "/api/v1/account":
+    get:
+      tags:
+      - Account
+      summary: Conta, pedidos recentes e pagamentos recentes.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Resumo da conta.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        "$ref": "#/components/schemas/User"
+                      recent_service_requests:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/ServiceRequest"
+                      recent_payments:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/Payment"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+  "/api/v1/professionals/search":
+    get:
+      tags:
+      - Professionals
+      summary: Pesquisa publica de profissionais por categoria, localizacao administrativa
+        e proximidade.
+      description: Retorna dados publicos dos profissionais. Quando latitude e longitude
+        do cliente sao enviadas, o backend calcula `distance_km`, mas nao revela as
+        coordenadas exatas do profissional.
+      parameters:
+      - name: category_slug
+        in: query
+        schema:
+          type: string
+      - name: province
+        in: query
+        schema:
+          type: string
+      - name: municipality
+        in: query
+        schema:
+          type: string
+      - name: neighborhood
+        in: query
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        description: Latitude do cliente quando a localizacao exata for autorizada.
+        schema:
+          type: number
+      - name: longitude
+        in: query
+        description: Longitude do cliente quando a localizacao exata for autorizada.
+        schema:
+          type: number
+      - name: radius_km
+        in: query
+        description: Raio maximo em quilometros aplicado quando latitude e longitude
+          forem enviados.
+        schema:
+          type: number
+      responses:
+        '200':
+          description: Profissionais publicos filtrados e, quando possivel, ordenados
+            por distancia.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Professional"
+  "/api/v1/professionals":
+    get:
+      tags:
+      - Professionals
+      summary: Lista profissionais visiveis pelo usuario autenticado.
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: category_slug
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        description: Filtro operacional. Ignorado para usuarios nao operacionais.
+        schema:
+          type: string
+          enum:
+          - online
+          - offline
+          - occupied
+          - suspended
+      - name: documents_status
+        in: query
+        description: Filtro operacional por revisao documental. Ignorado para usuarios nao operacionais.
+        schema:
+          type: string
+          enum:
+          - pending
+          - verified
+          - rejected
+      responses:
+        '200':
+          description: Profissionais.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Professional"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+  "/api/v1/professionals/{id}":
+    get:
+      tags:
+      - Professionals
+      summary: Detalhe de um profissional.
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Profissional.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/Professional"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/v1/professionals/{id}/operational_profile":
+    patch:
+      tags:
+      - Professionals
+      summary: Atualiza estado e notas internas do perfil profissional operacional.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - professional
+              properties:
+                professional:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      enum:
+                      - online
+                      - offline
+                      - occupied
+                      - suspended
+                    operator_notes:
+                      type:
+                      - string
+                      - 'null'
+                      maxLength: 2000
+      responses:
+        '200':
+          description: Perfil operacional atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/Professional"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+  "/api/v1/service_requests":
+    get:
+      tags:
+      - ServiceRequests
+      summary: Lista pedidos visiveis pelo usuario autenticado.
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - pending
+          - assigned
+          - accepted
+          - in_progress
+          - completed
+          - cancelled
+          - disputed
+      - name: category_slug
+        in: query
+        schema:
+          type: string
+      - name: province
+        in: query
+        schema:
+          type: string
+        description: Filtra a fila operacional por provincia administrativa.
+      - name: urgency
+        in: query
+        schema:
+          type: string
+          enum:
+          - normal
+          - urgent
+          - priority
+      responses:
+        '200':
+          description: Pedidos.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/ServiceRequest"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+    post:
+      tags:
+      - ServiceRequests
+      summary: Cria pedido de servico.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateServiceRequestInput"
+          multipart/form-data:
+            schema:
+              allOf:
+              - "$ref": "#/components/schemas/CreateServiceRequestInput"
+              - type: object
+                properties:
+                  attachments:
+                    type: array
+                    maxItems: 5
+                    items:
+                      type: string
+                      format: binary
+      responses:
+        '201':
+          description: Pedido criado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/ServiceRequest"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+  "/api/v1/professional_portal/documents":
+    get:
+      tags:
+      - ProfessionalPortal
+      summary: Lista documentos do profissional autenticado.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Documentos enviados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/ProfessionalDocument"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+    post:
+      tags:
+      - ProfessionalPortal
+      summary: Envia documento de verificacao profissional.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - kind
+              - file
+              properties:
+                kind:
+                  type: string
+                  enum:
+                  - identity
+                  - certificate
+                  - license
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Documento recebido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/ProfessionalDocument"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+  "/api/v1/professional_documents/{id}/review":
+    patch:
+      tags:
+      - ProfessionalPortal
+      summary: Aprova ou rejeita documento profissional.
+      description: Apenas usuarios operacionais.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - approved
+                  - rejected
+                review_notes:
+                  type: string
+      responses:
+        '200':
+          description: Documento revisado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/ProfessionalDocument"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+  "/api/v1/service_requests/{id}":
+    get:
+      tags:
+      - ServiceRequests
+      summary: Detalhe de um pedido.
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Pedido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/ServiceRequest"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/v1/service_requests/{id}/review":
+    post:
+      tags:
+      - ServiceRequests
+      summary: Registra avaliacao do cliente para um pedido concluido.
+      description: Apenas o cliente dono do pedido pode avaliar, uma vez, depois da conclusao operacional.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/CreateReviewInput"
+      responses:
+        '201':
+          description: Avaliacao registrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/Review"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+  "/api/v1/service_requests/{id}/matches":
+    get:
+      tags:
+      - ServiceRequests
+      summary: Lista candidatos calculados pelo matching.
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+      responses:
+        '200':
+          description: Matches.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Match"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+  "/api/v1/service_requests/{id}/assign":
+    post:
+      tags:
+      - ServiceRequests
+      summary: Atribui profissional a um pedido.
+      description: Apenas usuarios operacionais.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AssignServiceRequestInput"
+      responses:
+        '200':
+          description: Pedido atribuido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/ServiceRequest"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+  "/api/v1/service_requests/{id}/status":
+    patch:
+      tags:
+      - ServiceRequests
+      summary: Atualiza estado do pedido.
+      description: Profissionais atribuidos podem atualizar estados operacionais sem pagamento. O estado `completed`, que gera pagamento pago, e exclusivo para usuarios operacionais.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UpdateServiceRequestStatusInput"
+      responses:
+        '200':
+          description: Pedido atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/ServiceRequest"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+  "/api/v1/payments":
+    get:
+      tags:
+      - Payments
+      summary: Lista pagamentos visiveis pelo usuario autenticado.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Pagamentos.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                      - "$ref": "#/components/schemas/Payment"
+                      - type: object
+                        properties:
+                          service_request:
+                            "$ref": "#/components/schemas/ServiceRequest"
+  "/api/v1/dashboard":
+    get:
+      tags:
+      - Operations
+      summary: Dashboard operacional.
+      security:
+      - cookieAuth: []
+      parameters:
+      - name: audit_action
+        in: query
+        schema:
+          type: string
+          enum:
+          - professional_document.reviewed
+          - professional.operational_profile_updated
+          - service_request.assigned
+          - service_request.status_updated
+        description: Filtra a trilha de auditoria operacional exibida no dashboard.
+      responses:
+        '200':
+          description: Indicadores operacionais.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      stats:
+                        "$ref": "#/components/schemas/OperationsStats"
+                      service_quality:
+                        "$ref": "#/components/schemas/OperationsServiceQuality"
+                      risk_alerts:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/OperationsRiskAlert"
+                      recent_requests:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/ServiceRequest"
+                      top_professionals:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/Professional"
+                      categories:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/ServiceCategory"
+                      matching_preview_request:
+                        anyOf:
+                        - "$ref": "#/components/schemas/ServiceRequest"
+                        - type: 'null'
+                      matching_preview:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/Match"
+                      audit_actions:
+                        type: array
+                        items:
+                          type: string
+                      recent_audit_logs:
+                        type: array
+                        items:
+                          "$ref": "#/components/schemas/AuditActivity"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+  "/api/v1/professional_portal/dashboard":
+    get:
+      tags:
+      - ProfessionalPortal
+      summary: Dashboard do profissional.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Dados do painel profissional.
+          content:
+            application/json:
+              schema:
+                type: object
+  "/api/v1/professional_portal/wallet":
+    get:
+      tags:
+      - ProfessionalPortal
+      summary: Carteira do profissional.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Pagamentos e totais do profissional.
+          content:
+            application/json:
+              schema:
+                type: object
+  "/api/v1/professional_portal/history":
+    get:
+      tags:
+      - ProfessionalPortal
+      summary: Historico de pedidos do profissional.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Historico.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/ServiceRequest"
+  "/api/v1/professional_portal/jobs":
+    get:
+      tags:
+      - ProfessionalPortal
+      summary: Pedidos pendentes nas categorias do profissional.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Vagas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/ServiceRequest"
+  "/api/v1/professional_portal/profile":
+    get:
+      tags:
+      - ProfessionalPortal
+      summary: Perfil do profissional autenticado.
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Perfil profissional.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/Professional"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+    post:
+      tags:
+      - ProfessionalPortal
+      summary: Cria perfil do profissional autenticado.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ProfessionalProfileInput"
+      responses:
+        '201':
+          description: Perfil profissional criado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/Professional"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"
+    patch:
+      tags:
+      - ProfessionalPortal
+      summary: Atualiza perfil do profissional autenticado.
+      security:
+      - cookieAuth: []
+        csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ProfessionalProfileInput"
+      responses:
+        '200':
+          description: Perfil profissional atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/Professional"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '422':
+          "$ref": "#/components/responses/ValidationFailed"

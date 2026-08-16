@@ -1,0 +1,23 @@
+# Local environment and secrets
+/.env*
+/frontend/.env*
+!/frontend/.env.example
+/config/master.key
+/config/credentials/*.key
+
+# Runtime output
+/log/*
+!/log/.keep
+/tmp/*
+!/tmp/.keep
+/storage/*
+!/storage/.keep
+
+# Dependencies and generated assets
+/.bundle/
+/node_modules/
+/frontend/node_modules/
+/frontend/.next/
+/app/assets/builds/*
+!/app/assets/builds/.keep
+/public/assets/

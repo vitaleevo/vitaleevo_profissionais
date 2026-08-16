@@ -1,0 +1,42 @@
+<section class="auth-layout">
+  <div class="auth-copy">
+    <p class="eyebrow">Minha conta</p>
+    <h1>Atualizar acesso</h1>
+    <p class="muted">Altere nome, email ou senha da conta autenticada.</p>
+  </div>
+
+  <div class="auth-card">
+    <h2>Dados da conta</h2>
+
+    <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :put, class: "auth-form" }) do |f| %>
+      <%= render "devise/shared/error_messages", resource: resource %>
+
+      <label>
+        Nome
+        <%= f.text_field :name, autocomplete: "name", required: true %>
+      </label>
+
+      <label>
+        Email
+        <%= f.email_field :email, autocomplete: "email", required: true %>
+      </label>
+
+      <label>
+        Nova senha
+        <%= f.password_field :password, autocomplete: "new-password", placeholder: "Deixe em branco para manter" %>
+      </label>
+
+      <label>
+        Confirmar nova senha
+        <%= f.password_field :password_confirmation, autocomplete: "new-password" %>
+      </label>
+
+      <label>
+        Senha atual
+        <%= f.password_field :current_password, autocomplete: "current-password", required: true %>
+      </label>
+
+      <%= f.submit "Atualizar conta", class: "button button-primary button-full" %>
+    <% end %>
+  </div>
+</section>

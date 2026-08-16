@@ -1,0 +1,23 @@
+FROM ruby:3.3-bookworm
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+      build-essential \
+      git \
+      libpq-dev \
+      libvips \
+      libyaml-dev \
+      pkg-config \
+      postgresql-client && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+RUN useradd --create-home --uid 1000 app && \
+    mkdir -p /app /bundle && \
+    chown -R app:app /app /bundle
+
+ENV BUNDLE_PATH="/bundle" \
+    BUNDLE_BIN="/bundle/bin" \
+    PATH="/bundle/bin:${PATH}"
+
+WORKDIR /app
+USER app

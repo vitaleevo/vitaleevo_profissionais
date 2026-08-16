@@ -1,0 +1,41 @@
+<section class="auth-layout">
+  <div class="auth-copy">
+    <p class="eyebrow">Nova conta</p>
+    <h1>Criar acesso de cliente</h1>
+    <p class="muted">Cadastros publicos entram como cliente. Admins e operadores podem ser criados pelos seeds ou pelo console.</p>
+  </div>
+
+  <div class="auth-card">
+    <h2>Cadastro</h2>
+
+    <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { class: "auth-form" }) do |f| %>
+      <%= render "devise/shared/error_messages", resource: resource %>
+
+      <label>
+        Nome
+        <%= f.text_field :name, autofocus: true, autocomplete: "name", required: true, placeholder: "Seu nome" %>
+      </label>
+
+      <label>
+        Email
+        <%= f.email_field :email, autocomplete: "email", required: true, placeholder: "cliente@email.com" %>
+      </label>
+
+      <label>
+        Senha
+        <%= f.password_field :password, autocomplete: "new-password", required: true, placeholder: "#{@minimum_password_length || 6} caracteres ou mais" %>
+      </label>
+
+      <label>
+        Confirmar senha
+        <%= f.password_field :password_confirmation, autocomplete: "new-password", required: true %>
+      </label>
+
+      <%= f.submit "Criar conta", class: "button button-primary button-full" %>
+    <% end %>
+
+    <div class="auth-links">
+      <%= render "devise/shared/links" %>
+    </div>
+  </div>
+</section>

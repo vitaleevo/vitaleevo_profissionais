@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Conexao Market" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Conexao Market">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  </head>
+
+  <body class="<%= [
+    user_signed_in? && current_user.operational? ? "operations-layout" : "market-layout",
+    "#{controller_path.tr("/", "-").dasherize}-#{action_name.dasherize}"
+  ].join(" ") %>">
+    <% if user_signed_in? && current_user.operational? %>
+      <aside class="side-nav">
+        <%= link_to dashboard_path, class: "brand brand-sidebar" do %>
+          <span class="brand-mark">CM</span>
+          <span>
+            <strong>Conexao Market</strong>
+            <small>Operations Center</small>
+          </span>
+        <% end %>
+
+        <nav class="side-links" aria-label="Navegacao operacional">
+          <%= link_to dashboard_path, class: "side-link" do %>
+            <%= ui_icon("dashboard") %>
+            Dashboard
+          <% end %>
+          <%= link_to service_requests_path, class: "side-link" do %>
+            <%= ui_icon("assignment") %>
+            Pedidos
+          <% end %>
+          <%= link_to professionals_path, class: "side-link" do %>
+            <%= ui_icon("engineering") %>
+            Profissionais
+          <% end %>
+          <% if user_signed_in? && policy(ServiceRequest).create? %>
+            <%= link_to new_service_request_path, class: "side-link" do %>
+              <%= ui_icon("add_task") %>
+              Novo pedido
+            <% end %>
+          <% end %>
+        </nav>
+
+        <div class="side-user">
+          <div class="avatar"><%= current_user.display_name.first.upcase %></div>
+          <div>
+            <strong><%= current_user.display_name %></strong>
+            <small><%= current_user.role.humanize %></small>
+          </div>
+          <%= button_to destroy_user_session_path, method: :delete, class: "icon-button", title: "Sair" do %>
+            <%= ui_icon("logout") %>
+          <% end %>
+        </div>
+      </aside>
+
+      <header class="work-topbar">
+        <div class="work-search">
+          <%= ui_icon("search") %>
+          <input type="search" placeholder="Buscar pedidos, profissionais ou clientes">
+        </div>
+        <div class="work-actions">
+          <button class="icon-button" type="button" title="Notificacoes">
+            <%= ui_icon("notifications") %>
+          </button>
+          <%= link_to "Criar pedido", new_service_request_path, class: "button button-primary" if policy(ServiceRequest).create? %>
+        </div>
+      </header>
+    <% else %>
+      <header class="app-shell">
+        <nav class="topbar" aria-label="Navegacao principal">
+        <%= link_to root_path, class: "brand" do %>
+            <span class="brand-mark">CM</span>
+            <span>
+              <strong>Conexao Market</strong>
+              <small>Servicos profissionais</small>
+            </span>
+          <% end %>
+
+          <div class="nav-links">
+            <%= link_to "Servicos", categories_path %>
+            <%= link_to "Como funciona", how_it_works_path %>
+            <%= link_to "Confianca", trust_center_path %>
+            <%= link_to "Ajuda", help_center_path %>
+            <%= link_to "Pedidos", my_service_requests_path if user_signed_in? && !current_user.professional? %>
+            <%= link_to "Painel", professional_dashboard_path if user_signed_in? && current_user.professional? %>
+            <% if user_signed_in? && policy(ServiceRequest).create? %>
+              <%= link_to "Solicitar servico", new_service_request_path, class: "button button-primary" %>
+            <% end %>
+            <% if user_signed_in? %>
+              <span class="user-chip"><%= current_user.display_name %> - <%= current_user.role.humanize %></span>
+              <%= button_to "Sair", destroy_user_session_path, method: :delete, class: "button button-secondary" %>
+            <% else %>
+              <%= link_to "Entrar", new_user_session_path, class: "button button-primary" %>
+            <% end %>
+          </div>
+        </nav>
+      </header>
+    <% end %>
+
+    <main class="page">
+      <% if notice.present? %>
+        <p class="flash flash-success"><%= notice %></p>
+      <% end %>
+
+      <% if alert.present? %>
+        <p class="flash flash-alert"><%= alert %></p>
+      <% end %>
+
+      <%= yield %>
+    </main>
+  </body>
+</html>

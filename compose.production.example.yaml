@@ -1,0 +1,117 @@
+x-profissionais-logging: &profissionais_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *profissionais_logging
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE:-profissionais_production}
+      POSTGRES_USER: ${POSTGRES_USER:-profissionais}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-profissionais} -d ${POSTGRES_DATABASE:-profissionais_production}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rails:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    logging: *profissionais_logging
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      RAILS_LOG_LEVEL: ${RAILS_LOG_LEVEL:-info}
+      RAILS_MASTER_KEY: ${RAILS_MASTER_KEY:?set RAILS_MASTER_KEY}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?set SECRET_KEY_BASE}
+      POSTGRES_HOST: db
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE:-profissionais_production}
+      POSTGRES_USER: ${POSTGRES_USER:-profissionais}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      PROFISSIONAIS_ROOT_DOMAIN: ${PROFISSIONAIS_ROOT_DOMAIN:-profiangola.ao}
+      RAILS_HOSTS: ${RAILS_HOSTS:-profiangola.ao,www.profiangola.ao,admin.profiangola.ao,operacoes.profiangola.ao,app.profiangola.ao,rails,localhost,127.0.0.1}
+      RAILS_FORCE_SSL: ${RAILS_FORCE_SSL:-true}
+      RAILS_ASSUME_SSL: ${RAILS_ASSUME_SSL:-true}
+      RAILS_MAILER_HOST: ${RAILS_MAILER_HOST:-profiangola.ao}
+      DEVISE_MAILER_SENDER: ${DEVISE_MAILER_SENDER:-no-reply@profiangola.ao}
+      SESSION_COOKIE_KEY: ${SESSION_COOKIE_KEY:-_profiangola_session}
+      SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-.profiangola.ao}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      SESSION_COOKIE_SAME_SITE: ${SESSION_COOKIE_SAME_SITE:-lax}
+      SESSION_TIMEOUT_MINUTES: ${SESSION_TIMEOUT_MINUTES:-720}
+      DEVISE_REMEMBER_FOR_DAYS: ${DEVISE_REMEMBER_FOR_DAYS:-7}
+      RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
+      RATE_LIMIT_PUBLIC_SEARCH_PER_MINUTE: ${RATE_LIMIT_PUBLIC_SEARCH_PER_MINUTE:-60}
+      RATE_LIMIT_API_PER_MINUTE: ${RATE_LIMIT_API_PER_MINUTE:-300}
+      FRONTEND_PUBLIC_BASE_URL: ${FRONTEND_PUBLIC_BASE_URL:-https://profiangola.ao}
+    ports:
+      - "127.0.0.1:3000:80"
+    volumes:
+      - rails_storage:/rails/storage
+      - rails_logs:/rails/log
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/up >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_RAILS_ASSET_HOSTS: ${NEXT_PUBLIC_RAILS_ASSET_HOSTS:-https://profiangola.ao,https://www.profiangola.ao,https://admin.profiangola.ao,https://operacoes.profiangola.ao,https://app.profiangola.ao}
+    restart: unless-stopped
+    logging: *profissionais_logging
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - rails
+    environment:
+      NODE_ENV: production
+      FRONTEND_PUBLIC_BASE_URL: ${FRONTEND_PUBLIC_BASE_URL:-https://profiangola.ao}
+      FRONTEND_ALLOWED_HOSTS: ${FRONTEND_ALLOWED_HOSTS:-profiangola.ao,www.profiangola.ao,admin.profiangola.ao,operacoes.profiangola.ao,app.profiangola.ao}
+      RAILS_API_BASE_URL: ${RAILS_API_BASE_URL:-http://rails:80}
+      RAILS_PUBLIC_BASE_URL: ${RAILS_PUBLIC_BASE_URL:-https://profiangola.ao}
+      NEXT_PUBLIC_RAILS_ASSET_HOSTS: ${NEXT_PUBLIC_RAILS_ASSET_HOSTS:-https://profiangola.ao,https://www.profiangola.ao,https://admin.profiangola.ao,https://operacoes.profiangola.ao,https://app.profiangola.ao}
+      SESSION_COOKIE_KEY: ${SESSION_COOKIE_KEY:-_profiangola_session}
+      SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-.profiangola.ao}
+      SESSION_COOKIE_SAME_SITE: ${SESSION_COOKIE_SAME_SITE:-lax}
+      RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
+      PUBLIC_PROFESSIONAL_SEARCH_RATE_LIMIT_PER_MINUTE: ${PUBLIC_PROFESSIONAL_SEARCH_RATE_LIMIT_PER_MINUTE:-60}
+      YANDEX_TRIP_INFO_RATE_LIMIT_PER_MINUTE: ${YANDEX_TRIP_INFO_RATE_LIMIT_PER_MINUTE:-30}
+    ports:
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  rails_storage:
+  rails_logs:

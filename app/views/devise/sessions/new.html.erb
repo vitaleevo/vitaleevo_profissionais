@@ -1,0 +1,36 @@
+<section class="auth-layout">
+  <div class="auth-copy">
+    <p class="eyebrow">Acesso seguro</p>
+    <h1>Entrar no Conexao Market</h1>
+    <p class="muted">Use uma conta de admin, operador, profissional ou cliente para ver o sistema filtrado pelo papel.</p>
+  </div>
+
+  <div class="auth-card">
+    <h2>Sessao</h2>
+
+    <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "auth-form" }) do |f| %>
+      <label>
+        Email
+        <%= f.email_field :email, autofocus: true, autocomplete: "email", required: true, placeholder: "email@empresa.co.ao" %>
+      </label>
+
+      <label>
+        Senha
+        <%= f.password_field :password, autocomplete: "current-password", required: true %>
+      </label>
+
+      <% if devise_mapping.rememberable? %>
+        <label class="check-line">
+          <%= f.check_box :remember_me %>
+          Manter sessao iniciada
+        </label>
+      <% end %>
+
+      <%= f.submit "Entrar", class: "button button-primary button-full" %>
+    <% end %>
+
+    <div class="auth-links">
+      <%= render "devise/shared/links" %>
+    </div>
+  </div>
+</section>
