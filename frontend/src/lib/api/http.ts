@@ -106,22 +106,20 @@ async function apiRequestEnvelope<T, M = unknown>(
     cache: "no-store",
   });
 
-  const payload = (await parseApiEnvelope<T>(response)) as ApiEnvelope<T>;
+  const payload = await parseApiEnvelope<T>(response);
 
   if (!response.ok) {
-    throw new ApiRequestError(response.status, payload.error);
+    const err = payload && typeof payload === "object" && "error" in payload ? (payload as any).error : { message: "Erro na API" };
+    throw new ApiRequestError(response.status, err);
   }
 
-  if (payload.data === undefined) {
-    throw new ApiRequestError(response.status, {
-      code: "empty_response",
-      message: "A API respondeu sem dados.",
-    });
-  }
+  const data = (payload && typeof payload === "object" && "data" in payload && (payload as any).data !== undefined)
+    ? (payload as any).data
+    : payload;
 
   return {
-    data: payload.data,
-    meta: payload.meta as M | undefined,
+    data: data as T,
+    meta: (payload && typeof payload === "object" && "meta" in payload) ? (payload as any).meta : undefined,
   };
 }
 
@@ -136,17 +134,17 @@ async function fetchCsrfToken(incomingCookieHeader: string) {
     headers,
     cache: "no-store",
   });
-  const payload = await parseApiEnvelope<{ csrf_token: string }>(response);
+  const payload = (await parseApiEnvelope<{ csrf_token: string }>(response)) as any;
 
-  if (!response.ok || !payload.data?.csrf_token) {
-    throw new ApiRequestError(response.status, payload.error ?? {
+  if (!response.ok || !payload?.csrf_token && !payload?.data?.csrf_token) {
+    throw new ApiRequestError(response.status, payload?.error ?? {
       code: "csrf_failed",
       message: "Nao foi possivel preparar a sessao segura.",
     });
   }
 
   return {
-    token: payload.data.csrf_token,
+    token: payload?.csrf_token || payload?.data?.csrf_token,
     cookieHeader: setCookieHeaders(response.headers).map((cookie) => cookie.split(";", 1)[0]).join("; "),
   };
 }
@@ -165,5 +163,14 @@ async function parseApiEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> 
     };
   }
 
-  return response.json() as Promise<ApiEnvelope<T>>;
+  try {
+    return (await response.json()) as ApiEnvelope<T>;
+  } catch {
+    return {
+      error: {
+        code: "invalid_json",
+        message: "Falha ao processar resposta JSON.",
+      },
+    };
+  }
 }
