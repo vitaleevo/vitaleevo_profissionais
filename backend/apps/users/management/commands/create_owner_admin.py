@@ -1,6 +1,6 @@
 """Comando Django para criar/atualizar o utilizador superadministrador do dono."""
 import os
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from apps.users.models import User
 from apps.core.enums import StaffRole
 
@@ -38,6 +38,9 @@ class Command(BaseCommand):
         password = options["password"]
         first_name = options["first_name"]
         last_name = options["last_name"]
+
+        if not password:
+            raise CommandError("ADMIN_PASSWORD é obrigatório para criar ou atualizar o superusuário.")
 
         user, created = User.objects.get_or_create(
             email=email,

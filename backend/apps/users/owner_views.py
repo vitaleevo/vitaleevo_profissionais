@@ -15,7 +15,7 @@ class IsOwnerSuperadmin(permissions.BasePermission):
         return bool(
             request.user
             and request.user.is_authenticated
-            and (request.user.is_superuser or request.user.role == "admin" or request.user.is_staff)
+            and request.user.is_superuser
         )
 
 
@@ -27,7 +27,7 @@ def owner_dashboard(request):
 
     # Contagem de utilizadores reais no banco
     total_users = User.objects.count()
-    admin_users = User.objects.filter(role="admin").count()
+    admin_users = User.objects.filter(is_superuser=True).count()
 
     # Registos recentes de auditoria
     recent_logs = []
@@ -54,62 +54,23 @@ def owner_dashboard(request):
             },
         },
         "metrics": {
-            "billed_revenue_cents": 4850000000,
-            "estimated_revenue_cents": 1620000000,
-            "active_contracts": 14,
-            "allocated_professionals": 72,
-            "academy_students": 28,
-            "pending_quotes": 6,
-            "pending_professionals": 2,
+            "billed_revenue_cents": None,
+            "estimated_revenue_cents": None,
+            "active_contracts": None,
+            "allocated_professionals": None,
+            "academy_students": None,
+            "pending_quotes": None,
+            "pending_professionals": None,
             "total_users": total_users,
             "admin_users": admin_users,
         },
-        "divisions": [
-            {
-                "key": "training",
-                "num": "01",
-                "name": "Formação Corporativa",
-                "badge": "Equipas Internas",
-                "active_programs": 6,
-                "professionals_count": 340,
-                "monthly_billing_cents": 1250000000,
-                "status": "active",
-                "status_label": "Ativo · Alta Procura",
-            },
-            {
-                "key": "academy",
-                "num": "02",
-                "name": "Academia Vitaleevo",
-                "badge": "Talentos Próprios",
-                "active_programs": 3,
-                "professionals_count": 28,
-                "monthly_billing_cents": 680000000,
-                "status": "training",
-                "status_label": "Em Treino Intensivo",
-            },
-            {
-                "key": "outsourcing",
-                "num": "03",
-                "name": "Outsourcing Especializado",
-                "badge": "Força Alocada",
-                "active_programs": 14,
-                "professionals_count": 72,
-                "monthly_billing_cents": 2240000000,
-                "status": "allocated",
-                "status_label": "14 Contratos Vigentes",
-            },
-            {
-                "key": "cleaning",
-                "num": "04",
-                "name": "Limpeza Corporativa",
-                "badge": "Facilities",
-                "active_programs": 9,
-                "professionals_count": 38,
-                "monthly_billing_cents": 680000000,
-                "status": "active",
-                "status_label": "Operação Contínua",
-            },
-        ],
+        "data_availability": {
+            "contracts": False,
+            "financials": False,
+            "professionals": False,
+            "quotes": False,
+        },
+        "divisions": [],
         "audit_logs": recent_logs,
     }
 
@@ -120,57 +81,17 @@ def owner_dashboard(request):
 @permission_classes([IsOwnerSuperadmin])
 def professional_action(request, professional_id: int):
     """POST /api/v1/owner/professionals/<id>/action/ — aprovar/rejeitar profissional com auditoria."""
-    action = request.data.get("action")
-    reason = request.data.get("reason", "").strip()
-
-    if action not in ["approve", "reject"]:
-        return Response({"error": "Ação inválida. Use 'approve' ou 'reject'."}, status=status.HTTP_400_BAD_REQUEST)
-
-    if not reason:
-        return Response({"error": "O motivo é obrigatório para registrar a ação."}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Gravar log de auditoria
-    AuditLog.objects.create(
-        user=request.user,
-        action=f"professional:{action}",
-        resource_type="professional",
-        resource_id=str(professional_id),
-        details={"reason": reason, "performed_by": request.user.email},
-        ip_address=request.META.get("REMOTE_ADDR"),
+    return Response(
+        {"error": "O domínio de profissionais ainda não está integrado ao backoffice."},
+        status=status.HTTP_409_CONFLICT,
     )
-
-    return Response({
-        "success": True,
-        "professional_id": professional_id,
-        "action": action,
-        "new_status": "verified" if action == "approve" else "rejected",
-        "reason": reason,
-    })
 
 
 @api_view(["POST"])
 @permission_classes([IsOwnerSuperadmin])
 def quote_action(request, quote_id: str):
     """POST /api/v1/owner/quotes/<id>/action/ — aprovar proposta/cotação com auditoria."""
-    new_status = request.data.get("status")
-    reason = request.data.get("reason", "Aprovado pelo Dono").strip()
-
-    if new_status not in ["approved", "rejected", "proposal_sent", "in_progress"]:
-        return Response({"error": "Estado inválido."}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Gravar log de auditoria
-    AuditLog.objects.create(
-        user=request.user,
-        action=f"quote:status_change:{new_status}",
-        resource_type="quote",
-        resource_id=quote_id,
-        details={"status": new_status, "reason": reason, "performed_by": request.user.email},
-        ip_address=request.META.get("REMOTE_ADDR"),
+    return Response(
+        {"error": "O domínio de cotações ainda não está integrado ao backoffice."},
+        status=status.HTTP_409_CONFLICT,
     )
-
-    return Response({
-        "success": True,
-        "quote_id": quote_id,
-        "status": new_status,
-        "reason": reason,
-    })
