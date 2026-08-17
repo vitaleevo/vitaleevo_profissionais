@@ -10,15 +10,21 @@ export type OwnerDashboardData = {
     };
   };
   metrics: {
-    billed_revenue_cents: number;
-    estimated_revenue_cents: number;
-    active_contracts: number;
-    allocated_professionals: number;
-    academy_students: number;
-    pending_quotes: number;
-    pending_professionals: number;
+    billed_revenue_cents: number | null;
+    estimated_revenue_cents: number | null;
+    active_contracts: number | null;
+    allocated_professionals: number | null;
+    academy_students: number | null;
+    pending_quotes: number | null;
+    pending_professionals: number | null;
     total_users: number;
     admin_users: number;
+  };
+  data_availability: {
+    contracts: boolean;
+    financials: boolean;
+    professionals: boolean;
+    quotes: boolean;
   };
   divisions: Array<{
     key: "training" | "academy" | "outsourcing" | "cleaning";
@@ -42,21 +48,10 @@ export type OwnerDashboardData = {
   }>;
 };
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://backend-production-ff93.up.railway.app";
-
-export async function fetchOwnerDashboard(token?: string): Promise<OwnerDashboardData | null> {
+export async function fetchOwnerDashboard(): Promise<OwnerDashboardData | null> {
   try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    const res = await fetch(`${apiBaseUrl}/api/v1/owner/dashboard/`, {
-      headers,
+    const res = await fetch("/api/owner/dashboard", {
+      headers: { Accept: "application/json" },
       cache: "no-store",
     });
 
@@ -68,52 +63,4 @@ export async function fetchOwnerDashboard(token?: string): Promise<OwnerDashboar
   } catch {
     return null;
   }
-}
-
-export async function performProfessionalAction(
-  professionalId: number,
-  action: "approve" | "reject",
-  reason: string,
-  token?: string,
-) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${apiBaseUrl}/api/v1/owner/professionals/${professionalId}/action/`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ action, reason }),
-  });
-
-  return res.json();
-}
-
-export async function performQuoteAction(
-  quoteId: string,
-  status: "approved" | "rejected" | "proposal_sent" | "in_progress",
-  reason?: string,
-  token?: string,
-) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${apiBaseUrl}/api/v1/owner/quotes/${quoteId}/action/`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ status, reason: reason || "Atualizado pelo Dono" }),
-  });
-
-  return res.json();
 }

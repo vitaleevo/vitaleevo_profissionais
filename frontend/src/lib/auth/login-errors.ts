@@ -2,6 +2,7 @@ export const LOGIN_ERROR_MESSAGES = {
   invalid_request: "Pedido de login invalido.",
   missing_credentials: "Preencha email e senha.",
   invalid_credentials: "Email ou senha invalidos.",
+  access_denied: "Esta conta não possui acesso ao painel do dono.",
   rate_limited: "Muitas tentativas. Tente novamente dentro de instantes.",
   session_failed: "Nao foi possivel preparar a sessao segura.",
 } as const;

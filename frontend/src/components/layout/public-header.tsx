@@ -5,7 +5,6 @@ import { MobilePublicNavigation } from "./mobile-public-navigation";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { getCurrentUser } from "@/lib/api/account";
-import { isAccessError } from "@/lib/api/errors";
 import type { User } from "@/lib/api/types";
 import { getCurrentVertical } from "@/lib/ecosystem/server";
 import type { EcosystemVerticalKey } from "@/lib/ecosystem/verticals";

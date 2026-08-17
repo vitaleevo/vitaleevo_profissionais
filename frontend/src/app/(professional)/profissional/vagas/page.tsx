@@ -1,8 +1,7 @@
-import { ArrowLeft, BriefcaseBusiness, Sparkles } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness } from "lucide-react";
 
 import { RequestSummaryCard } from "@/components/domain/service-requests/request-summary-card";
 import { AccessPanel } from "@/components/layout/access-panel";
-import { Badge } from "@/components/ui/badge";
 import { DataList } from "@/components/ui/data-list";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";

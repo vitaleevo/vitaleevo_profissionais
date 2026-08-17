@@ -6,7 +6,6 @@ import {
   Plus,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
   UsersRound,
   XCircle,
 } from "lucide-react";
@@ -14,7 +13,6 @@ import {
 import { StatsGrid } from "@/components/domain/dashboard/stats-grid";
 import { ProfessionalCard } from "@/components/domain/professionals/professional-card";
 import { AccessPanel } from "@/components/layout/access-panel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataList } from "@/components/ui/data-list";
@@ -26,7 +24,7 @@ import { getCurrentUser } from "@/lib/api/account";
 import { isAccessError } from "@/lib/api/errors";
 import { getServiceCategories } from "@/lib/api/marketplace";
 import { getProfessionals } from "@/lib/api/professionals";
-import type { Professional, ServiceCategory, User } from "@/lib/api/types";
+import type { Professional, User } from "@/lib/api/types";
 import { statusLabel } from "@/lib/formatters/status";
 
 export const dynamic = "force-dynamic";
@@ -39,12 +37,6 @@ type SearchParams = {
 
 type OperationsProfessionalsPageProps = {
   searchParams: Promise<SearchParams>;
-};
-
-type ProfessionalFilters = {
-  categorySlug?: string;
-  documentsStatus?: string;
-  status?: string;
 };
 
 const professionalStatuses: Professional["status"][] = ["online", "offline", "occupied", "suspended"];

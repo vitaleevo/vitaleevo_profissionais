@@ -1,32 +1,23 @@
 "use client";
 
 import {
-  ArrowDownRight,
-  ArrowUpRight,
   Briefcase,
-  Building2,
-  CheckCircle2,
-  DollarSign,
   GraduationCap,
-  Scale,
   Sparkles,
-  TrendingUp,
-  Users,
   Wallet,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 export type OwnerKpiStats = {
-  totalRevenueCents?: number;
-  monthlyRevenueCents?: number;
-  estimatedRevenueCents?: number;
-  activeContracts?: number;
-  allocatedProfessionals?: number;
-  academyStudents?: number;
-  pendingQuotes?: number;
-  verifiedProfessionals?: number;
+  totalRevenueCents?: number | null;
+  monthlyRevenueCents?: number | null;
+  estimatedRevenueCents?: number | null;
+  activeContracts?: number | null;
+  allocatedProfessionals?: number | null;
+  academyStudents?: number | null;
+  pendingQuotes?: number | null;
+  verifiedProfessionals?: number | null;
   clientSatisfaction?: string;
 };
 
@@ -34,9 +25,8 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
   const cards = [
     {
       title: "Volume em Contratos & Faturação",
-      value: stats?.totalRevenueCents ? `${(stats.totalRevenueCents / 100000000).toFixed(1)}M Kz` : "48.500.000 Kz",
-      subtext: "+18.4% vs mês anterior",
-      trend: "up",
+      value: formatCurrency(stats?.totalRevenueCents),
+      subtext: stats?.totalRevenueCents === undefined || stats.totalRevenueCents === null ? "Integração financeira pendente" : "Receita faturada no período",
       icon: Wallet,
       gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent",
       iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -44,9 +34,8 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
     },
     {
       title: "Equipas Alocadas em Outsourcing",
-      value: stats?.activeContracts ? `${stats.activeContracts} Equipas` : "14 Equipas",
-      subtext: `${stats?.allocatedProfessionals ?? 72} profissionais ativos em clientes`,
-      trend: "up",
+      value: formatCount(stats?.activeContracts, "equipas"),
+      subtext: stats?.allocatedProfessionals === undefined || stats.allocatedProfessionals === null ? "Integração operacional pendente" : `${stats.allocatedProfessionals} profissionais alocados`,
       icon: Briefcase,
       gradient: "from-purple-500/15 via-purple-500/5 to-transparent",
       iconBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
@@ -54,9 +43,8 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
     },
     {
       title: "Academia Vitaleevo (Talentos)",
-      value: stats?.academyStudents ? `${stats.academyStudents} Formandos` : "28 Formandos",
-      subtext: "12 aptos para colocação imediata",
-      trend: "neutral",
+      value: formatCount(stats?.academyStudents, "formandos"),
+      subtext: stats?.academyStudents === undefined || stats.academyStudents === null ? "Integração da academia pendente" : "Formandos ativos no período",
       icon: GraduationCap,
       gradient: "from-amber-500/15 via-amber-500/5 to-transparent",
       iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -64,9 +52,8 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
     },
     {
       title: "Propostas & Diagnósticos Pendentes",
-      value: stats?.pendingQuotes ? `${stats.pendingQuotes} Propostas` : "6 Propostas",
-      subtext: stats?.estimatedRevenueCents ? `Estimadas em ${(stats.estimatedRevenueCents / 100000000).toFixed(1)}M Kz` : "Estimadas em 16.200.000 Kz",
-      trend: "attention",
+      value: formatCount(stats?.pendingQuotes, "propostas"),
+      subtext: stats?.estimatedRevenueCents === undefined || stats.estimatedRevenueCents === null ? "Integração comercial pendente" : `Estimadas em ${formatCurrency(stats.estimatedRevenueCents)}`,
       icon: Sparkles,
       gradient: "from-indigo-500/15 via-indigo-500/5 to-transparent",
       iconBg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
@@ -98,18 +85,23 @@ export function OwnerKpiCards({ stats }: { stats?: OwnerKpiStats }) {
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-1.5 text-xs">
-                {card.trend === "up" && (
-                  <span className="flex items-center font-bold text-emerald-600 dark:text-emerald-400">
-                    <ArrowUpRight className="mr-0.5 size-3.5" />
-                  </span>
-                )}
-                <span className="font-medium text-muted-foreground">{card.subtext}</span>
-              </div>
+              <p className="mt-4 text-xs font-medium text-muted-foreground">{card.subtext}</p>
             </CardContent>
           </Card>
         );
       })}
     </div>
   );
+}
+
+function formatCurrency(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(value / 100);
+}
+
+function formatCount(value: number | null | undefined, label: string) {
+  return value === null || value === undefined ? "—" : `${value} ${label}`;
 }

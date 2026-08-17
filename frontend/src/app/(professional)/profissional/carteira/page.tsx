@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Coins, Percent, ReceiptText, Wallet } from "lucide-react";
+import { ArrowLeft, Coins, Percent, ReceiptText, Wallet } from "lucide-react";
 
 import { StatsGrid } from "@/components/domain/dashboard/stats-grid";
 import { AccessPanel } from "@/components/layout/access-panel";

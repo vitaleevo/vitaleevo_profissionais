@@ -1,20 +1,13 @@
 import Link from "next/link";
 import {
-  BookOpen,
   BriefcaseBusiness,
-  Building2,
-  CheckCircle2,
   ClipboardList,
-  GraduationCap,
   HelpCircle,
   History,
   LayoutDashboard,
   LogOut,
   PlusCircle,
-  ShieldCheck,
   Sparkles,
-  SprayCan,
-  Target,
   UserCheck,
   UserRound,
   UsersRound,
@@ -69,8 +62,8 @@ export async function AppShell({
   }
 
   const vertical = verticalFor(currentUser, verticalKey);
-  const navigation = navigationFor(currentUser, vertical.key);
-  const primaryAction = primaryActionFor(currentUser, vertical.key);
+  const navigation = navigationFor(currentUser);
+  const primaryAction = primaryActionFor(currentUser);
 
   return (
     <div className="min-h-screen bg-muted/20 text-foreground lg:grid lg:grid-cols-[18.5rem_minmax(0,1fr)]">
@@ -88,10 +81,10 @@ export async function AppShell({
                 <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               <strong className="mt-1 block text-sm font-bold text-foreground">
-                {workspaceTitle(currentUser, vertical.key)}
+                {workspaceTitle(currentUser)}
               </strong>
               <span className="mt-0.5 block text-xs text-muted-foreground line-clamp-2">
-                {workspaceDescription(currentUser, vertical.key)}
+                {workspaceDescription(currentUser)}
               </span>
             </div>
           </div>
@@ -208,7 +201,7 @@ function verticalFor(user: User, fallbackKey: EcosystemVerticalKey): EcosystemVe
   return ECOSYSTEM_VERTICALS[fallbackKey] ?? ECOSYSTEM_VERTICALS.account;
 }
 
-function navigationFor(user: User, verticalKey: EcosystemVerticalKey): AppNavItem[] {
+function navigationFor(user: User): AppNavItem[] {
   if (user.role === "admin" || user.role === "operator") {
     return [
       { href: "/operacoes", icon: LayoutDashboard, label: "Dashboard Executivo" },
@@ -240,7 +233,7 @@ function navigationFor(user: User, verticalKey: EcosystemVerticalKey): AppNavIte
   ];
 }
 
-function primaryActionFor(user: User, verticalKey: EcosystemVerticalKey) {
+function primaryActionFor(user: User) {
   if (user.role === "admin" || user.role === "operator") {
     return { href: "/pedidos/novo", icon: PlusCircle, label: "Criar Pedido Corporativo" };
   }
@@ -257,7 +250,7 @@ function workspaceRolePill(user: User): string {
   return "🏢 EMPRESA CLIENTE";
 }
 
-function workspaceTitle(user: User, verticalKey: EcosystemVerticalKey) {
+function workspaceTitle(user: User) {
   if (user.role === "admin" || user.role === "operator") {
     return "Gestão Geral Vitaleevo";
   }
@@ -267,7 +260,7 @@ function workspaceTitle(user: User, verticalKey: EcosystemVerticalKey) {
   return "Centro de Contratação";
 }
 
-function workspaceDescription(user: User, verticalKey: EcosystemVerticalKey) {
+function workspaceDescription(user: User) {
   if (user.role === "admin" || user.role === "operator") {
     return "Acompanhamento das 4 divisões, talentos e faturamento.";
   }

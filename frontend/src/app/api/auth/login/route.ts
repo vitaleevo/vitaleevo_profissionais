@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { mergeCookieHeaders, setCookieHeaders } from "@/lib/api/cookie-headers";
-import type { User } from "@/lib/api/types";
+import { setCookieHeaders } from "@/lib/api/cookie-headers";
 import type { LoginErrorCode } from "@/lib/auth/login-errors";
 import { appUrl } from "@/lib/server/app-url";
 import { clientIpFromRequest, consumeRateLimit } from "@/lib/server/rate-limit";
 
-type ApiEnvelope<T> = {
-  data?: T;
-  error?: {
-    message?: string;
-  };
-};
+type AuthenticatedUser = { role: string; is_superuser: boolean };
 
 const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "https://backend-production-ff93.up.railway.app";
 const rateLimitWindowMs = 60_000;
@@ -30,11 +24,12 @@ export async function POST(request: Request) {
     return redirectToLogin(request, "invalid_request");
   }
 
+  const loginPath = loginPathFrom(formData);
   const email = formData.get("email")?.toString().trim().toLowerCase();
   const password = formData.get("password")?.toString();
 
   if (!email || !password) {
-    return redirectToLogin(request, "missing_credentials");
+    return redirectToLogin(request, "missing_credentials", loginPath);
   }
 
   // Try Django JWT Auth directly
@@ -48,30 +43,34 @@ export async function POST(request: Request) {
     cache: "no-store",
   });
 
-  const loginPayload = (await loginResponse.json().catch(() => ({}))) as any;
+  const loginPayload: unknown = await loginResponse.json().catch(() => null);
+  const authenticatedUser = extractAuthenticatedUser(loginPayload);
 
-  if (!loginResponse.ok || (!loginPayload.user && !loginPayload.data)) {
-    return redirectToLogin(request, loginResponse.status === 429 ? "rate_limited" : "invalid_credentials");
+  if (!loginResponse.ok || !authenticatedUser) {
+    return redirectToLogin(request, loginResponse.status === 429 ? "rate_limited" : "invalid_credentials", loginPath);
   }
 
-  const authenticatedUser = (loginPayload.user || loginPayload.data) as User;
-  const targetPath = authenticatedUser.role === "admin" ? "/admin" : nextPathFor(authenticatedUser);
+  if (loginPath === "/admin/login" && (authenticatedUser.role !== "admin" || !authenticatedUser.is_superuser)) {
+    return redirectToLogin(request, "access_denied", loginPath);
+  }
+
+  const targetPath = authenticatedUser.is_superuser && authenticatedUser.role === "admin" ? "/admin" : nextPathFor(authenticatedUser);
   const response = NextResponse.redirect(appUrl(request, targetPath), 303);
 
   // Set JWT tokens in HttpOnly cookies
-  if (loginPayload.access) {
-    response.cookies.set("jwt_access", loginPayload.access, {
+  if (authenticatedUser.access) {
+    response.cookies.set("jwt_access", authenticatedUser.access, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 8, // 8 hours
     });
   }
-  if (loginPayload.refresh) {
-    response.cookies.set("jwt_refresh", loginPayload.refresh, {
+  if (authenticatedUser.refresh) {
+    response.cookies.set("jwt_refresh", authenticatedUser.refresh, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30, // 30 days
@@ -90,25 +89,8 @@ async function loginFormData(request: Request) {
   }
 }
 
-function buildHeaders(cookieHeader: string, csrfToken?: string) {
-  const headers = new Headers({
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  });
-
-  if (cookieHeader) {
-    headers.set("Cookie", cookieHeader);
-  }
-
-  if (csrfToken) {
-    headers.set("X-CSRF-Token", csrfToken);
-  }
-
-  return headers;
-}
-
-function redirectToLogin(request: Request, code: LoginErrorCode) {
-  const url = appUrl(request, "/login");
+function redirectToLogin(request: Request, code: LoginErrorCode, loginPath = "/login") {
+  const url = appUrl(request, loginPath);
   url.searchParams.set("erro", code);
   return NextResponse.redirect(url, 303);
 }
@@ -119,7 +101,7 @@ function copySetCookies(headers: Headers, response: NextResponse) {
   }
 }
 
-function nextPathFor(user: User) {
+function nextPathFor(user: AuthenticatedUser) {
   if (user.role === "admin" || user.role === "operator") {
     return "/operacoes";
   }
@@ -129,4 +111,30 @@ function nextPathFor(user: User) {
   }
 
   return "/conta";
+}
+
+function loginPathFrom(formData: FormData) {
+  return formData.get("redirect_to") === "/admin/login" ? "/admin/login" : "/login";
+}
+
+function extractAuthenticatedUser(payload: unknown): (AuthenticatedUser & { access: string; refresh: string }) | null {
+  if (!isRecord(payload) || !isRecord(payload.user)) {
+    return null;
+  }
+
+  const { user } = payload;
+  if (
+    typeof user.role !== "string" ||
+    typeof user.is_superuser !== "boolean" ||
+    typeof payload.access !== "string" ||
+    typeof payload.refresh !== "string"
+  ) {
+    return null;
+  }
+
+  return { role: user.role, is_superuser: user.is_superuser, access: payload.access, refresh: payload.refresh };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

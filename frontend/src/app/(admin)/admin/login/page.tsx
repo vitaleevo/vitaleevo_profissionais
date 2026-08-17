@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 export default function OwnerLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("negociosvitaleevo@gmail.com");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("Vitaleevo@2026!Admin");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,59 +34,65 @@ export default function OwnerLoginPage() {
     setError(null);
 
     try {
+      // 1. Direct JWT Auth to Django Backend
       const res = await fetch("https://backend-production-ff93.up.railway.app/api/v1/auth/login/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password: password.trim() }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        setError(data?.detail || data?.error || "Credenciais inválidas. Verifique o e-mail e a palavra-passe.");
+      if (!res.ok || !data.access) {
+        const errorMsg =
+          data?.detail ||
+          data?.non_field_errors?.[0] ||
+          (data?.password ? data.password[0] : null) ||
+          "E-mail ou palavra-passe incorretos. Por favor verifique as credenciais.";
+        setError(errorMsg);
         setIsLoading(false);
         return;
       }
 
-      // Check if user is admin / superuser
+      // Check user permissions
       const user = data.user;
-      if (user && user.role !== "admin" && !user.is_staff) {
-        setError("Acesso restrito. Esta conta não possui privilégios de Superadministrador / Dono.");
+      if (user && user.role !== "admin" && !user.is_staff && !user.is_superuser) {
+        setError("Acesso restrito. Esta conta não possui permissões de Superadministrador / Dono.");
         setIsLoading(false);
         return;
       }
 
-      // Store tokens in cookies / localStorage for client state
+      // 2. Set Cookies and LocalStorage
       if (typeof window !== "undefined") {
-        if (data.access) {
-          document.cookie = `jwt_access=${data.access}; path=/; max-age=28800; secure; samesite=lax`;
-          localStorage.setItem("owner_token", data.access);
+        document.cookie = `jwt_access=${data.access}; path=/; max-age=28800; secure; samesite=lax`;
+        if (data.refresh) {
+          document.cookie = `jwt_refresh=${data.refresh}; path=/; max-age=2592000; secure; samesite=lax`;
         }
+        localStorage.setItem("owner_token", data.access);
         if (data.user) {
           localStorage.setItem("owner_user", JSON.stringify(data.user));
         }
       }
 
-      // Redirect to /admin
-      router.push("/admin");
-      router.refresh();
+      // 3. Instant Redirect to Owner Command Center
+      window.location.href = "/admin";
     } catch {
-      setError("Erro ao conectar com o servidor. Verifique a sua ligação à internet.");
+      setError("Não foi possível estabelecer ligação com o servidor Django. Verifique a sua conexão.");
       setIsLoading(false);
     }
   };
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-12 text-slate-100 sm:px-6 lg:px-8">
-      {/* Background Decorative Gradients */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-purple-600/15 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 size-96 rounded-full bg-indigo-600/10 blur-[100px] pointer-events-none" />
+      {/* Background Glow */}
+      <div className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-purple-600/15 blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-10 right-10 size-96 rounded-full bg-indigo-600/10 blur-[100px]" />
 
       <div className="relative z-10 w-full max-w-md space-y-8">
-        {/* Header Branding */}
+        {/* Branding */}
         <div className="text-center">
           <div className="mx-auto flex h-12 w-48 items-center justify-center">
             <Image
@@ -107,16 +113,16 @@ export default function OwnerLoginPage() {
             </Badge>
           </div>
 
-          <h2 className="mt-3 font-black text-2xl tracking-tight text-white sm:text-3xl">
+          <h1 className="mt-3 font-black text-2xl tracking-tight text-white sm:text-3xl">
             Acesso ao Painel Executivo
-          </h2>
+          </h1>
           <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-            Autenticação segura de Superadministrador para gestão total da Vitaleevo.
+            Autenticação direta de Superadministrador para gestão da plataforma.
           </p>
         </div>
 
-        {/* Form Card */}
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
+        {/* Card */}
+        <div className="rounded-3xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
               <div className="flex items-start gap-2.5 rounded-2xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300">
@@ -130,7 +136,7 @@ export default function OwnerLoginPage() {
                 E-mail do Administrador
               </label>
               <div className="relative mt-2">
-                <Mail className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
+                <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   type="email"
                   required
@@ -149,7 +155,7 @@ export default function OwnerLoginPage() {
                 </label>
               </div>
               <div className="relative mt-2">
-                <Lock className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
+                <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   type={showPassword ? "text" : "password"}
                   required
@@ -176,7 +182,7 @@ export default function OwnerLoginPage() {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  A validar credenciais...
+                  A autenticar com o servidor...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
@@ -197,11 +203,11 @@ export default function OwnerLoginPage() {
           </div>
         </div>
 
-        {/* Security Footer Note */}
-        <div className="flex items-center justify-center gap-2 text-center text-[11px] text-slate-500">
+        {/* Security Note */}
+        <p className="flex items-center justify-center gap-2 text-center text-xs text-slate-500">
           <CheckCircle2 className="size-3.5 text-emerald-500" />
-          <span>Sessão encriptada e protegida com tokens JWT e HTTPS.</span>
-        </div>
+          Sessão encriptada e protegida por tokens JWT e HTTPS.
+        </p>
       </div>
     </div>
   );

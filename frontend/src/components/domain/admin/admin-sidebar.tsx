@@ -1,17 +1,13 @@
 "use client";
 
 import {
-  Activity,
   ArrowRight,
   BookOpen,
-  Briefcase,
-  Building2,
   ChevronLeft,
   ChevronRight,
   Database,
   ExternalLink,
   GraduationCap,
-  Layers,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -33,6 +29,7 @@ export type AdminTab = "overview" | "training" | "academy" | "outsourcing" | "cl
 type AdminSidebarProps = {
   activeTab: AdminTab;
   onSelectTab: (tab: AdminTab) => void;
+  ownerEmail: string;
   pendingProfessionalsCount?: number;
   pendingQuotesCount?: number;
 };
@@ -40,8 +37,9 @@ type AdminSidebarProps = {
 export function AdminSidebar({
   activeTab,
   onSelectTab,
-  pendingProfessionalsCount = 2,
-  pendingQuotesCount = 6,
+  ownerEmail,
+  pendingProfessionalsCount,
+  pendingQuotesCount,
 }: AdminSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -57,42 +55,34 @@ export function AdminSidebar({
       id: "training" as AdminTab,
       label: "1. Formação Corporativa",
       icon: BookOpen,
-      badge: "6 Turmas",
-      badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
     },
     {
       id: "academy" as AdminTab,
       label: "2. Academia Vitaleevo",
       icon: GraduationCap,
-      badge: "28 Alunos",
-      badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     },
     {
       id: "outsourcing" as AdminTab,
       label: "3. Outsourcing Especializado",
       icon: Users2,
-      badge: "14 Equipas",
-      badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
     },
     {
       id: "cleaning" as AdminTab,
       label: "4. Limpeza Corporativa",
       icon: SprayCan,
-      badge: "9 Contratos",
-      badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     },
     {
       id: "professionals" as AdminTab,
       label: "Validação de Profissionais",
       icon: Users2,
-      badge: pendingProfessionalsCount > 0 ? `${pendingProfessionalsCount} Pendentes` : null,
+      badge: pendingProfessionalsCount === undefined ? null : `${pendingProfessionalsCount} Pendentes`,
       badgeColor: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold",
     },
     {
       id: "quotes" as AdminTab,
       label: "Propostas & Diagnósticos B2B",
       icon: Sparkles,
-      badge: pendingQuotesCount > 0 ? `${pendingQuotesCount} Novos` : null,
+      badge: pendingQuotesCount === undefined ? null : `${pendingQuotesCount} Novas`,
       badgeColor: "bg-purple-500/15 text-purple-600 dark:text-purple-400 font-bold",
     },
     {
@@ -112,6 +102,7 @@ export function AdminSidebar({
           variant="outline"
           size="icon-sm"
           onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? "Fechar menu administrativo" : "Abrir menu administrativo"}
           className="rounded-xl border-border bg-background/90 shadow-md backdrop-blur-md"
         >
           {mobileOpen ? <X className="size-4" /> : <Menu className="size-4" />}
@@ -176,11 +167,11 @@ export function AdminSidebar({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate font-black text-foreground text-xs">Superadmin Dono</div>
-                <div className="truncate text-[10px] text-muted-foreground">negociosvitaleevo@gmail.com</div>
+              <div className="truncate text-[10px] text-muted-foreground">{ownerEmail}</div>
               </div>
             </div>
           ) : (
-            <div className="flex justify-center" title="negociosvitaleevo@gmail.com">
+            <div className="flex justify-center" title={ownerEmail}>
               <div className="size-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
             </div>
           )}

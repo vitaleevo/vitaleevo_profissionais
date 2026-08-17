@@ -1,8 +1,7 @@
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { RequestForm } from "./request-form";
 import { AccessPanel } from "@/components/layout/access-panel";
-import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { getCurrentUser } from "@/lib/api/account";

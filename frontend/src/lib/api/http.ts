@@ -22,6 +22,17 @@ type ApiRequestOptions = Omit<RequestInit, "body"> & {
   forwardCookies?: boolean;
 };
 
+type UnknownApiEnvelope = {
+  csrf_token?: unknown;
+  data?: unknown;
+  error?: unknown;
+  meta?: unknown;
+};
+
+type CsrfTokenPayload = {
+  csrf_token: string;
+};
+
 export class ApiRequestError extends Error {
   readonly status: number;
   readonly code: string;
@@ -109,17 +120,14 @@ async function apiRequestEnvelope<T, M = unknown>(
   const payload = await parseApiEnvelope<T>(response);
 
   if (!response.ok) {
-    const err = payload && typeof payload === "object" && "error" in payload ? (payload as any).error : { message: "Erro na API" };
-    throw new ApiRequestError(response.status, err);
+    throw new ApiRequestError(response.status, errorFromPayload(payload));
   }
 
-  const data = (payload && typeof payload === "object" && "data" in payload && (payload as any).data !== undefined)
-    ? (payload as any).data
-    : payload;
+  const data = dataFromPayload(payload);
 
   return {
     data: data as T,
-    meta: (payload && typeof payload === "object" && "meta" in payload) ? (payload as any).meta : undefined,
+    meta: metaFromPayload(payload) as M | undefined,
   };
 }
 
@@ -134,19 +142,54 @@ async function fetchCsrfToken(incomingCookieHeader: string) {
     headers,
     cache: "no-store",
   });
-  const payload = (await parseApiEnvelope<{ csrf_token: string }>(response)) as any;
+  const payload = await parseApiEnvelope<CsrfTokenPayload>(response);
+  const csrfToken = csrfTokenFromPayload(payload);
 
-  if (!response.ok || !payload?.csrf_token && !payload?.data?.csrf_token) {
-    throw new ApiRequestError(response.status, payload?.error ?? {
+  if (!response.ok || !csrfToken) {
+    throw new ApiRequestError(response.status, errorFromPayload(payload) ?? {
       code: "csrf_failed",
       message: "Nao foi possivel preparar a sessao segura.",
     });
   }
 
   return {
-    token: payload?.csrf_token || payload?.data?.csrf_token,
+    token: csrfToken,
     cookieHeader: setCookieHeaders(response.headers).map((cookie) => cookie.split(";", 1)[0]).join("; "),
   };
+}
+
+function isApiErrorBody(value: unknown): value is ApiErrorBody {
+  return typeof value === "object" && value !== null &&
+    "code" in value && typeof value.code === "string" &&
+    "message" in value && typeof value.message === "string";
+}
+
+function asUnknownApiEnvelope(payload: unknown): UnknownApiEnvelope | null {
+  return typeof payload === "object" && payload !== null ? payload as UnknownApiEnvelope : null;
+}
+
+function errorFromPayload(payload: unknown): ApiErrorBody | undefined {
+  const error = asUnknownApiEnvelope(payload)?.error;
+  return isApiErrorBody(error) ? error : undefined;
+}
+
+function dataFromPayload(payload: unknown): unknown {
+  const envelope = asUnknownApiEnvelope(payload);
+  return envelope?.data !== undefined ? envelope.data : payload;
+}
+
+function metaFromPayload(payload: unknown): unknown {
+  return asUnknownApiEnvelope(payload)?.meta;
+}
+
+function csrfTokenFromPayload(payload: unknown): string | undefined {
+  const directToken = asUnknownApiEnvelope(payload)?.csrf_token;
+  if (typeof directToken === "string") {
+    return directToken;
+  }
+
+  const nestedToken = asUnknownApiEnvelope(asUnknownApiEnvelope(payload)?.data)?.csrf_token;
+  return typeof nestedToken === "string" ? nestedToken : undefined;
 }
 
 async function parseApiEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {

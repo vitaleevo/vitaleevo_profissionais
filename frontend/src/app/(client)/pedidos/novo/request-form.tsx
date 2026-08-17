@@ -1,34 +1,22 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useState } from "react";
 import {
-  BookOpen,
-  Building2,
   CheckCircle2,
-  Clock,
-  Layers,
-  MapPinned,
-  Megaphone,
-  Paperclip,
   Send,
   ShieldCheck,
   Sparkles,
-  SprayCan,
-  Target,
-  UserRound,
-  Zap,
 } from "lucide-react";
 
 import { createServiceRequestAction, type CreateServiceRequestState } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field as FormField, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ServiceCategory } from "@/lib/api/types";
-import { ANGOLA_PROVINCES, getAngolaMunicipalities, getAngolaNeighborhoods } from "@/lib/locations/angola";
+import { ANGOLA_PROVINCES } from "@/lib/locations/angola";
 
 type RequestFormProps = {
   categories: ServiceCategory[];
@@ -41,14 +29,10 @@ export function RequestForm({ categories, selectedSlug }: RequestFormProps) {
   const [state, formAction, pending] = useActionState(createServiceRequestAction, initialState);
   const [province, setProvince] = useState("Luanda");
   const [municipality, setMunicipality] = useState("Talatona");
-  const [neighborhood, setNeighborhood] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(() => {
     const found = categories.find((c) => c.slug === selectedSlug);
     return found ? found.id : categories[0]?.id;
   });
-
-  const municipalitySuggestions = useMemo(() => getAngolaMunicipalities(province), [province]);
-  const neighborhoodSuggestions = useMemo(() => getAngolaNeighborhoods(municipality), [municipality]);
 
   const currentCategory = categories.find((c) => c.id === selectedCategoryId) ?? categories[0];
 
