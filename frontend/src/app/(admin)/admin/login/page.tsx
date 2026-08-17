@@ -13,20 +13,25 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { loginErrorMessage } from "@/lib/auth/login-errors";
 
-export default function OwnerLoginPage() {
+function LoginFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const errorCode = searchParams.get("erro");
+  const initialError = errorCode ? loginErrorMessage(errorCode) : null;
+
   const [email, setEmail] = useState("negociosvitaleevo@gmail.com");
   const [password, setPassword] = useState("Vitaleevo@2026!Admin");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,54 +39,39 @@ export default function OwnerLoginPage() {
     setError(null);
 
     try {
-      // 1. Direct JWT Auth to Django Backend
-      const res = await fetch("https://backend-production-ff93.up.railway.app/api/v1/auth/login/", {
+      // Direct POST to Next.js Auth endpoint which sets HttpOnly session cookies
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password: password.trim() }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+          redirect_to: "/admin/login",
+        }),
       });
 
       const data = await res.json().catch(() => ({}));
 
-      if (!res.ok || !data.access) {
-        const errorMsg =
-          data?.detail ||
-          data?.non_field_errors?.[0] ||
-          (data?.password ? data.password[0] : null) ||
-          "E-mail ou palavra-passe incorretos. Por favor verifique as credenciais.";
-        setError(errorMsg);
+      if (!res.ok || !data.success) {
+        setError(data?.error || "E-mail ou palavra-passe incorretos. Por favor verifique as credenciais.");
         setIsLoading(false);
         return;
       }
 
-      // Check user permissions
-      const user = data.user;
-      if (user && user.role !== "admin" && !user.is_staff && !user.is_superuser) {
-        setError("Acesso restrito. Esta conta não possui permissões de Superadministrador / Dono.");
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. Set Cookies and LocalStorage
-      if (typeof window !== "undefined") {
-        document.cookie = `jwt_access=${data.access}; path=/; max-age=28800; secure; samesite=lax`;
-        if (data.refresh) {
-          document.cookie = `jwt_refresh=${data.refresh}; path=/; max-age=2592000; secure; samesite=lax`;
-        }
-        localStorage.setItem("owner_token", data.access);
-        if (data.user) {
-          localStorage.setItem("owner_user", JSON.stringify(data.user));
-        }
-      }
-
-      // 3. Instant Redirect to Owner Command Center
-      window.location.href = "/admin";
+      // Redirecionamento completo para carregar a sessão com cookies no servidor
+      window.location.replace(data.redirect || "/admin");
     } catch {
-      setError("Não foi possível estabelecer ligação com o servidor Django. Verifique a sua conexão.");
-      setIsLoading(false);
+      setError("Erro de ligação com o servidor. A tentar envio padrão...");
+      // Fallback: submit standard form
+      const form = document.getElementById("admin-login-native-form") as HTMLFormElement;
+      if (form) {
+        form.submit();
+      } else {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -123,7 +113,9 @@ export default function OwnerLoginPage() {
 
         {/* Card */}
         <div className="rounded-3xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form id="admin-login-native-form" action="/api/auth/login" method="POST" onSubmit={handleLogin} className="space-y-5">
+            <input type="hidden" name="redirect_to" value="/admin/login" />
+
             {error && (
               <div className="flex items-start gap-2.5 rounded-2xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300">
                 <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-400" />
@@ -138,6 +130,7 @@ export default function OwnerLoginPage() {
               <div className="relative mt-2">
                 <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
+                  name="email"
                   type="email"
                   required
                   value={email}
@@ -157,6 +150,7 @@ export default function OwnerLoginPage() {
               <div className="relative mt-2">
                 <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   required
                   value={password}
@@ -182,7 +176,7 @@ export default function OwnerLoginPage() {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  A autenticar com o servidor...
+                  A validar e entrar...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
@@ -210,5 +204,13 @@ export default function OwnerLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function OwnerLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">A carregar...</div>}>
+      <LoginFormContent />
+    </Suspense>
   );
 }

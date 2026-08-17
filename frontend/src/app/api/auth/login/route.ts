@@ -5,11 +5,11 @@ import type { LoginErrorCode } from "@/lib/auth/login-errors";
 import { appUrl } from "@/lib/server/app-url";
 import { clientIpFromRequest, consumeRateLimit } from "@/lib/server/rate-limit";
 
-type AuthenticatedUser = { role: string; is_superuser: boolean };
+type AuthenticatedUser = { role: string; is_superuser: boolean; is_staff?: boolean };
 
-const apiBaseUrl = process.env.RAILS_API_BASE_URL ?? "https://backend-production-ff93.up.railway.app";
+const apiBaseUrl = process.env.DJANGO_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "https://backend-production-ff93.up.railway.app";
 const rateLimitWindowMs = 60_000;
-const rateLimitMax = Number(process.env.RATE_LIMIT_AUTH_PER_MINUTE ?? 10);
+const rateLimitMax = Number(process.env.RATE_LIMIT_AUTH_PER_MINUTE ?? 20);
 
 export async function POST(request: Request) {
   const rateLimit = consumeRateLimit(`auth-login:${clientIpFromRequest(request)}`, rateLimitMax, rateLimitWindowMs);
@@ -19,20 +19,39 @@ export async function POST(request: Request) {
     return response;
   }
 
-  const formData = await loginFormData(request);
-  if (!formData) {
-    return redirectToLogin(request, "invalid_request");
-  }
+  const isJsonRequest = request.headers.get("content-type")?.includes("application/json");
+  let email = "";
+  let password = "";
+  let loginPath = "/login";
 
-  const loginPath = loginPathFrom(formData);
-  const email = formData.get("email")?.toString().trim().toLowerCase();
-  const password = formData.get("password")?.toString();
+  if (isJsonRequest) {
+    try {
+      const body = await request.json();
+      email = body.email?.toString().trim().toLowerCase() || "";
+      password = body.password?.toString() || "";
+      loginPath = body.redirect_to === "/admin/login" ? "/admin/login" : "/login";
+    } catch {
+      return isJsonRequest
+        ? NextResponse.json({ error: "Pedido inválido" }, { status: 400 })
+        : redirectToLogin(request, "invalid_request");
+    }
+  } else {
+    const formData = await loginFormData(request);
+    if (!formData) {
+      return redirectToLogin(request, "invalid_request");
+    }
+    loginPath = loginPathFrom(formData);
+    email = formData.get("email")?.toString().trim().toLowerCase() || "";
+    password = formData.get("password")?.toString() || "";
+  }
 
   if (!email || !password) {
-    return redirectToLogin(request, "missing_credentials", loginPath);
+    return isJsonRequest
+      ? NextResponse.json({ error: "Preencha o e-mail e a palavra-passe." }, { status: 400 })
+      : redirectToLogin(request, "missing_credentials", loginPath);
   }
 
-  // Try Django JWT Auth directly
+  // Autenticação com Django REST Framework
   const loginResponse = await fetch(`${apiBaseUrl}/api/v1/auth/login/`, {
     method: "POST",
     headers: {
@@ -47,33 +66,49 @@ export async function POST(request: Request) {
   const authenticatedUser = extractAuthenticatedUser(loginPayload);
 
   if (!loginResponse.ok || !authenticatedUser) {
-    return redirectToLogin(request, loginResponse.status === 429 ? "rate_limited" : "invalid_credentials", loginPath);
+    const errorDetail =
+      isRecord(loginPayload) && typeof loginPayload.detail === "string"
+        ? loginPayload.detail
+        : "Credenciais inválidas. Verifique o e-mail e a palavra-passe.";
+
+    return isJsonRequest
+      ? NextResponse.json({ error: errorDetail }, { status: loginResponse.status || 401 })
+      : redirectToLogin(request, loginResponse.status === 429 ? "rate_limited" : "invalid_credentials", loginPath);
   }
 
-  if (loginPath === "/admin/login" && (authenticatedUser.role !== "admin" || !authenticatedUser.is_superuser)) {
-    return redirectToLogin(request, "access_denied", loginPath);
+  // Verificação para rota do Dono
+  const isSuper = authenticatedUser.is_superuser || authenticatedUser.role === "admin" || authenticatedUser.is_staff;
+  if (loginPath === "/admin/login" && !isSuper) {
+    return isJsonRequest
+      ? NextResponse.json({ error: "Esta conta não possui privilégios de Superadministrador." }, { status: 403 })
+      : redirectToLogin(request, "access_denied", loginPath);
   }
 
-  const targetPath = authenticatedUser.is_superuser && authenticatedUser.role === "admin" ? "/admin" : nextPathFor(authenticatedUser);
-  const response = NextResponse.redirect(appUrl(request, targetPath), 303);
+  const targetPath = isSuper ? "/admin" : nextPathFor(authenticatedUser);
 
-  // Set JWT tokens in HttpOnly cookies
+  // Criar resposta (JSON ou Redirecionamento 303)
+  const response = isJsonRequest
+    ? NextResponse.json({ success: true, redirect: targetPath, user: authenticatedUser })
+    : NextResponse.redirect(appUrl(request, targetPath), 303);
+
+  // Gravar cookies JWT HttpOnly
   if (authenticatedUser.access) {
     response.cookies.set("jwt_access", authenticatedUser.access, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 8, // 8 hours
+      maxAge: 60 * 60 * 8, // 8 horas
     });
   }
+
   if (authenticatedUser.refresh) {
     response.cookies.set("jwt_refresh", authenticatedUser.refresh, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 30, // 30 dias
     });
   }
 
@@ -125,14 +160,19 @@ function extractAuthenticatedUser(payload: unknown): (AuthenticatedUser & { acce
   const { user } = payload;
   if (
     typeof user.role !== "string" ||
-    typeof user.is_superuser !== "boolean" ||
     typeof payload.access !== "string" ||
     typeof payload.refresh !== "string"
   ) {
     return null;
   }
 
-  return { role: user.role, is_superuser: user.is_superuser, access: payload.access, refresh: payload.refresh };
+  return {
+    role: user.role,
+    is_superuser: Boolean(user.is_superuser),
+    is_staff: Boolean(user.is_staff),
+    access: payload.access,
+    refresh: payload.refresh,
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
